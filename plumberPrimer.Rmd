@@ -1,0 +1,121 @@
+---
+title: "Plumber primer"
+author: "Miguel Conde"
+date: "20 de octubre de 2017"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Very quick start
+
+Plumber allows you to create a REST API by merely decorating your existing R source code with special comments:
+
+```
+# myfile.R
+
+#* @get /mean
+normalMean <- function(samples=10){
+  data <- rnorm(samples)
+  mean(data)
+}
+
+#* @post /sum
+addTwo <- function(a, b){
+  as.numeric(a) + as.numeric(b)
+}
+```
+
+Now, at the console: try:
+```
+library(plumber)
+r <- plumb("myfile.R")  
+r$run(port=8000)
+```
+
+Go to your browser and type:
+
+```
+http://localhost:8000/mean
+```
+
+```
+http://localhost:8000/mean?samples=10000
+```
+
+
+```
+http://localhost:8000/sum?a=4&b=3
+```
+
+## Quick start
+
+The example below shows a file named plumber.R (the conventional name for Plumber APIs) which defines an API.
+
+```
+# plumber.R
+
+#' Echo the parameter that was sent in
+#' @param msg The message to echo back.
+#' @get /echo
+function(msg=""){
+  list(msg = paste0("The message is: '", msg, "'"))
+}
+
+#' Plot out data from the iris dataset
+#' @param spec If provided, filter the data to only this species (e.g. 'setosa')
+#' @get /plot
+#' @png
+function(spec){
+  myData <- iris
+  title <- "All Species"
+  
+  # Filter if the species was specified
+  if (!missing(spec)){
+    title <- paste0("Only the '", spec, "' Species")
+    myData <- subset(iris, Species == spec)
+  }
+  
+  plot(myData$Sepal.Length, myData$Petal.Length,
+       main=title, xlab="Sepal Length", ylab="Petal Length")
+}
+```
+This file defines two Plumber “**endpoints**.” One is hosted at the path /echo and simply echoes the message passed in; the other is hosted at the path /plot and returns an image showing a simple R plot.
+
+Now, again:
+```
+r <- plumb("plumber.R")  
+r$run(port=8000)
+```
+
+In your browser:
+
+(this *echo* example renders into JSON)
+``` 
+http://localhost:8000/echo?msg=Hello%20world!
+```
+
+(this *plot* example produces an image)
+```
+http://localhost:8000/plot
+```
+
+```
+http://localhost:8000/plot?spec=setosa
+```
+
+### Customizing The Output
+Unless instructed otherwise, Plumber will attempt to render whatever your endpoint function returns as JSON. However, you can specify alternative “serializers” which instruct Plumber to render the output as some other format such as HTML (@html), PNG (@png), or JPEG (@jpeg).
+
+```
+#' @get /hello
+#' @html
+function(){
+  "<html><h1>hello world</h1></html>"
+}
+```
+```
+http://localhost:8000/hello
+```
